@@ -125,6 +125,33 @@ function lightning_layout_update_8006() {
 }
 
 /**
+ * Creates Lightning Layout settings config object and installs Entity Blocks.
+ */
+function lightning_layout_update_8007() {
+  $id = 'lightning_layout.settings';
+
+  $values = \Drupal::service('lightning.config_helper')
+    ->install('lightning_layout')
+    ->read($id);
+
+  \Drupal::configFactory()
+    ->getEditable($id)
+    ->setData($values)
+    ->save();
+
+  \Drupal::service('module_installer')->install(['entity_block']);
+}
+
+
+/**
+ * Installs the Panelizer Quick Edit module, which allows fields placed with IPE
+ * to be edited with Quick Edit.
+ */
+function lightning_layout_update_8008() {
+  \Drupal::service('module_installer')->install(['panelizer_quickedit']);
+}
+
+/**
  * Returns the raw values for a bundled view display.
  *
  * @param string $display_id
