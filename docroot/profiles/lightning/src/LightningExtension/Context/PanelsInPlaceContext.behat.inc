@@ -2,29 +2,15 @@
 
 namespace Acquia\LightningExtension\Context;
 
+use Acquia\LightningExtension\AwaitTrait;
 use Drupal\DrupalExtension\Context\DrupalSubContextBase;
-use Drupal\DrupalExtension\Context\MinkContext;
 
 /**
  * A context for working with the Panels in-place editor.
  */
 class PanelsInPlaceContext extends DrupalSubContextBase {
 
-  /**
-   * The Mink context.
-   *
-   * @var MinkContext
-   */
-  protected $minkContext;
-
-  /**
-   * Gathers required contexts.
-   *
-   * @BeforeScenario
-   */
-  public function gatherContexts() {
-    $this->minkContext = $this->getContext(MinkContext::class);
-  }
+  use AwaitTrait;
 
   /**
    * Returns the active Panels IPE tab's contents.
@@ -73,7 +59,7 @@ class PanelsInPlaceContext extends DrupalSubContextBase {
     // ...but only open it if not already active.
     if ($link->getParent()->hasClass('active') == FALSE) {
       $link->click();
-      $this->minkContext->iWaitForAjaxToFinish();
+      $this->awaitAjax();
     }
 
     return $this->getActiveTab();
@@ -103,7 +89,7 @@ class PanelsInPlaceContext extends DrupalSubContextBase {
     // ...but only open it if not already active.
     if ($link->hasClass('active') == FALSE) {
       $link->click();
-      $this->minkContext->iWaitForAjaxToFinish();
+      $this->awaitAjax();
     }
 
     return $tab;
@@ -170,7 +156,7 @@ class PanelsInPlaceContext extends DrupalSubContextBase {
     $this->assertBlockPluginExists($plugin_id, $category)
       ->click();
 
-    $this->minkContext->iWaitForAjaxToFinish();
+    $this->awaitAjax();
 
     return $this->assertSession()
       ->elementExists('css', '.panels-ipe-block-plugin-form', $this->getActiveTab());
@@ -181,25 +167,16 @@ class PanelsInPlaceContext extends DrupalSubContextBase {
    *
    * @When I save the layout
    */
-  public function saveLayoutAsCustom() {
+  public function saveLayout() {
     $this->assertSession()
-      ->elementExists('named', ['link', 'Save as custom'], $this->openTab('Save'))
+      ->elementExists(
+        'named',
+        ['link', 'Save'],
+        $this->assertTray()
+      )
       ->click();
 
-    $this->minkContext->iWaitForAjaxToFinish();
-  }
-
-  /**
-   * Saves the current IPE layout as a default layout.
-   *
-   * @When I save the layout as default
-   */
-  public function saveLayoutAsDefault() {
-    $this->assertSession()
-      ->elementExists('named', ['link', 'Save as default'], $this->openTab('Save'))
-      ->click();
-
-    $this->minkContext->iWaitForAjaxToFinish();
+    $this->awaitAjax();
   }
 
   /**
@@ -217,7 +194,7 @@ class PanelsInPlaceContext extends DrupalSubContextBase {
     $this->instantiateBlock($plugin_id, $category)
       ->pressButton('Add');
 
-    $this->minkContext->iWaitForAjaxToFinish();
+    $this->awaitAjax();
   }
 
   /**
@@ -230,7 +207,11 @@ class PanelsInPlaceContext extends DrupalSubContextBase {
       ->elementExists('named', ['link', 'Revert to default'], $this->assertTray())
       ->click();
 
-    $this->minkContext->iWaitForAjaxToFinish();
+    /** @var \Acquia\LightningExtension\Context\UtilityContext $utility */
+    $utility = $this->getContext(UtilityContext::class);
+    $utility->acceptAlerts(function () {
+      $this->awaitAjax();
+    });
   }
 
 }
