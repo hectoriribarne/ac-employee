@@ -39,7 +39,7 @@ class MediaBulkFormTest extends MediaFunctionalTestBase {
   protected function setUp() {
     parent::setUp();
 
-    $this->testMediaType = $this->createMediaType();
+    $this->testMediaType = $this->createMediaType('test');
 
     // Create some test media items.
     $this->mediaItems = [];
@@ -63,7 +63,7 @@ class MediaBulkFormTest extends MediaFunctionalTestBase {
     // Check that all created items are present in the test view.
     $view = Views::getView('test_media_bulk_form');
     $view->execute();
-    $this->assertEquals($view->total_rows, 5);
+    $this->assertSame($view->total_rows, 5);
 
     // Check the operations are accessible to the logged in user.
     $this->drupalGet('test-media-bulk-form');
@@ -103,9 +103,9 @@ class MediaBulkFormTest extends MediaFunctionalTestBase {
     $page->checkField('media_bulk_form[1]');
     $page->selectFieldOption('action', 'media_delete_action');
     $page->pressButton('Apply to selected items');
-    $assert_session->pageTextContains('Are you sure you want to delete these items?');
+    $assert_session->pageTextContains('Are you sure you want to delete these media items?');
     $page->pressButton('Delete');
-    $assert_session->pageTextContains('Deleted 2 media items.');
+    $assert_session->pageTextContains('Deleted 2 items.');
     $this->assertNull($this->storage->loadUnchanged(1), 'Could not delete some of the media items.');
     $this->assertNull($this->storage->loadUnchanged(2), 'Could not delete some of the media items.');
   }

@@ -6,6 +6,7 @@ use Drupal\entity_test\Entity\EntityTestNoBundle;
 use Drupal\language\Entity\ConfigurableLanguage;
 use Drupal\node\Entity\Node;
 use Drupal\node\Entity\NodeType;
+use Drupal\Tests\content_moderation\Traits\ContentModerationTestTrait;
 use Drupal\Tests\views\Kernel\ViewsKernelTestBase;
 use Drupal\views\Views;
 use Drupal\workflows\Entity\Workflow;
@@ -18,6 +19,8 @@ use Drupal\workflows\Entity\Workflow;
  * @group content_moderation
  */
 class ViewsModerationStateFilterTest extends ViewsKernelTestBase {
+
+  use ContentModerationTestTrait;
 
   /**
    * {@inheritdoc}
@@ -44,7 +47,6 @@ class ViewsModerationStateFilterTest extends ViewsKernelTestBase {
     $this->installEntitySchema('content_moderation_state');
     $this->installEntitySchema('entity_test_no_bundle');
     $this->installSchema('node', 'node_access');
-    $this->installConfig('content_moderation_test_views');
     $this->installConfig('content_moderation');
 
     $node_type = NodeType::create([
@@ -61,6 +63,14 @@ class ViewsModerationStateFilterTest extends ViewsKernelTestBase {
       'type' => 'example_non_moderated',
     ]);
     $node_type->save();
+
+    $workflow = $this->createEditorialWorkflow();
+    $workflow->getTypePlugin()->addEntityTypeAndBundle('node', 'example');
+    $workflow->save();
+
+    // Install the test views after moderation has been enabled on the example
+    // bundle, so the moderation_state field exists.
+    $this->installConfig('content_moderation_test_views');
 
     ConfigurableLanguage::createFromLangcode('fr')->save();
   }
@@ -121,10 +131,10 @@ class ViewsModerationStateFilterTest extends ViewsKernelTestBase {
     $translated_forward_revision->moderation_state = 'translated_draft';
     $translated_forward_revision->save();
 
-    // Four revisions for the nodes when no filter.
-    $this->assertNodesWithFilters([$node, $second_node, $third_node, $third_node], []);
+    // The three default revisions are listed when no filter is specified.
+    $this->assertNodesWithFilters([$node, $second_node, $third_node], []);
 
-    // The default revision of node one and three is published.
+    // The default revision of node one and three are published.
     $this->assertNodesWithFilters([$node, $third_node], [
       'default_revision_state' => 'editorial-published',
     ]);
@@ -153,9 +163,9 @@ class ViewsModerationStateFilterTest extends ViewsKernelTestBase {
   }
 
   /**
-   * Test the moderation filter with a non-translateable entity type.
+   * Test the moderation filter with a non-translatable entity type.
    */
-  public function testNonTranslateableEntityType() {
+  public function testNonTranslatableEntityType() {
     $workflow = Workflow::load('editorial');
     $workflow->getTypePlugin()->addEntityTypeAndBundle('entity_test_no_bundle', 'entity_test_no_bundle');
     $workflow->save();
@@ -178,11 +188,13 @@ class ViewsModerationStateFilterTest extends ViewsKernelTestBase {
    */
   public function testStateFilterStatesList() {
     // By default a view of nodes will not have states to filter.
+    $workflow = Workflow::load('editorial');
+    $workflow->getTypePlugin()->removeEntityTypeAndBundle('node', 'example');
+    $workflow->save();
     $this->assertPluginStates([]);
 
     // Adding a content type to the editorial workflow will enable all of the
     // editorial states.
-    $workflow = Workflow::load('editorial');
     $workflow->getTypePlugin()->addEntityTypeAndBundle('node', 'example');
     $workflow->save();
     $this->assertPluginStates([
@@ -256,7 +268,7 @@ class ViewsModerationStateFilterTest extends ViewsKernelTestBase {
    */
   protected function assertPluginStates($states) {
     $plugin = Views::pluginManager('filter')->createInstance('moderation_state_filter', []);
-    $view = Views::getView('test_content_moderation_state_filter');
+    $view = Views::getView('test_content_moderation_state_filter_base_table');
     $plugin->init($view, $view->getDisplay());
     $this->assertEquals($states, $plugin->getValueOptions());
   }
@@ -271,7 +283,7 @@ class ViewsModerationStateFilterTest extends ViewsKernelTestBase {
    * @param string $view_id
    *   The view to execute for the results.
    */
-  protected function assertNodesWithFilters(array $nodes, array $filters, $view_id = 'test_content_moderation_state_filter') {
+  protected function assertNodesWithFilters(array $nodes, array $filters, $view_id = 'test_content_moderation_state_filter_base_table') {
     $view = Views::getView($view_id);
     $view->setExposedInput($filters);
     $view->execute();
